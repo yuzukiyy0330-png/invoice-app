@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="請求書">
+<title>請求書作成</title>
+<style>
+  :root {
+    --bg: #f2f5f4; --surface: #fff; --fg: #17211e; --muted: #66736f;
+    --line: #dde4e1; --accent: #0f8a6a; --accent-fg: #fff; --danger: #c0392b;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101614; --surface: #1a2220; --fg: #e8eeec; --muted: #94a29d;
+      --line: #2c3633; --accent: #4cc7a2; --accent-fg: #06231a; --danger: #ff7b6b;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 -apple-system, system-ui, "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
+    padding: 12px max(16px, env(safe-area-inset-left)) calc(90px + env(safe-area-inset-bottom));
+    min-height: 100vh;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 4px 0 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .btn { display: block; width: 100%; background: var(--surface); color: var(--fg); border: 1px solid var(--line); padding: 12px; border-radius: 10px; font: inherit; font-weight: 600; margin-bottom: 8px; text-align: center; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn.danger { color: var(--danger); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .num { font-variant-numeric: tabular-nums; }
+  input, select, textarea { width: 100%; padding: 12px; font: inherit; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); margin-top: 4px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr 1fr; padding-bottom: env(safe-area-inset-bottom); z-index: 20; }
+  .tab { background: none; border: 0; padding: 12px 0; color: var(--muted); font: inherit; font-size: 13px; }
+  .tab[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .fab { position: fixed; right: 20px; bottom: calc(70px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); border: 0; font-size: 28px; z-index: 21; }
+  .list-item { padding: 14px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; }
+  .list-item:first-child { border-top: 0; }
+  .item-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .rm { background: none; border: 0; color: var(--danger); font: inherit; font-size: 13px; padding: 6px 0 0; }
+
+  /* ===== 請求書の用紙 ===== */
+  .paper { background: #fff; color: #000; padding: 14px; border-radius: 8px; font-size: 13px; overflow-x: auto; }
+  .sheet { min-width: 620px; font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans CJK JP", sans-serif; }
+  .sheet .ttl-wrap { text-align: center; margin: 6px 0 10px; }
+  .sheet .ttl { display: inline-block; font-size: 22px; letter-spacing: 12px; padding: 0 4px 2px 16px; border-bottom: 2px solid #000; font-weight: 500; }
+  .sheet .date { text-align: right; font-size: 11px; }
+  .sheet .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-top: 6px; }
+  .sheet .to { flex: 1; font-size: 15px; font-weight: bold; padding-top: 6px; }
+  .sheet .to span.n { display: inline-block; border-bottom: 1px solid #000; padding-right: 20px; min-width: 60%; }
+  .sheet .from { width: 46%; font-size: 11px; line-height: 1.6; }
+  .sheet .from .nm { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
+  .sheet .from .rep { font-size: 11px; margin-left: 8px; }
+  .sheet .reg { text-align: right; font-size: 10px; margin-top: 4px; }
+  .sheet .lead { margin: 14px 0 6px; font-size: 12px; }
+  .sheet .sum { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 14px; font-size: 14px; }
+  .sheet .sum .amt { flex: 0 0 55%; border-bottom: 1px solid #000; text-align: center; font-size: 16px; letter-spacing: 1px; padding-bottom: 2px; }
+  .sheet table { border-collapse: collapse; width: 100%; table-layout: fixed; border: 2px solid #000; }
+  .sheet th, .sheet td { border: 1px solid #000; padding: 0 4px; height: 26px; font-size: 12px; overflow: hidden; white-space: nowrap; }
+  .sheet th { font-weight: normal; text-align: center; border-bottom: 2px solid #000; }
+  .sheet td.r { text-align: right; }
+  .sheet td.c { text-align: center; }
+  .sheet td.nm { text-align: center; white-space: normal; }
+  .sheet tr.tot td { border-top: 1px solid #000; }
+  .sheet tr.tot.first td { border-top: 2px solid #000; }
+  .sheet tr.tot td.lb { text-align: center; letter-spacing: 8px; }
+  .sheet .bank { margin: 14px 0 0 14px; font-size: 11px; line-height: 1.7; }
+  .sheet .bank .b2 { margin-left: 3.2em; }
+  .sheet .note { margin: 10px 0 0 14px; font-size: 11px; white-space: pre-wrap; }
+
+  #toast { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); background: #222; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 30; display: none; }
+  @media print {
+    @page { size: A4; margin: 14mm 14mm; }
+    html, body { background: #fff !important; color: #000; }
+    body { padding: 0; min-height: 0; }
+    .tabbar, .fab, .btn, .card, #toast, h1, .noprint { display: none !important; }
+    .paper { border: none; padding: 0; overflow: visible; }
+    .sheet { min-width: 0; }
+    .sheet th, .sheet td { height: 8mm; font-size: 11pt; }
+    .sheet tr { break-inside: avoid; }
+    .sheet .ttl { font-size: 24pt; }
+    .sheet .to { font-size: 14pt; }
+    .sheet .from { font-size: 9.5pt; }
+    .sheet .from .nm { font-size: 14pt; }
+    .sheet .date, .sheet .reg { font-size: 9.5pt; }
+    .sheet .lead { font-size: 10.5pt; }
+    .sheet .sum { font-size: 12pt; }
+    .sheet .sum .amt { font-size: 14pt; }
+    .sheet .bank, .sheet .note { font-size: 10pt; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<button class="fab" id="fab" onclick="go('edit')">＋</button>
+<nav class="tabbar">
+  <button class="tab" data-nav="home" onclick="go('home')">請求書</button>
+  <button class="tab" data-nav="clients" onclick="go('clients')">取引先</button>
+  <button class="tab" data-nav="settings" onclick="go('settings')">設定</button>
+</nav>
+<div id="toast"></div>
+<script>
+const KEY = 'invoiceApp.v1';
+const MIN_ROWS = 15;
+function defaultSettings() {
+  return { name: '', rep: '', zip: '', address: '', tel: '', regno: '', bank: '', prefix: 'INV', seq: 1 };
+}
+function defaultDB() {
+  return { settings: defaultSettings(), clients: [], invoices: [] };
+}
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
+    const d = defaultDB();
+    return {
+      settings: Object.assign(d.settings, raw.settings || {}),
+      clients: raw.clients || [],
+      invoices: raw.invoices || []
+    };
+  } catch { return defaultDB(); }
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(db)); }
+let db = load();
+// 日本時間などの端末のローカル日付（UTCだと朝9時前に前日になるため）
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const num = n => Math.round(n).toLocaleString('ja-JP');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function wareki(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return '';
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  try {
+    return d.toLocaleDateString('ja-JP-u-ca-japanese', { era: 'long', year: 'numeric', month: 'long', day: 'numeric' }).replace(/(\D)1年/, '$1元年');
+  } catch { return iso; }
+}
+// 数量×単価が入っていればその計算、無ければ金額欄の値を使う
+function itemAmt(it) {
+  const q = +it.qty || 0, p = +it.price || 0;
+  if (q && p) return Math.floor(q * p);
+  return Math.floor(+it.amount || 0);
+}
+function calc(inv) {
+  let base = 0;
+  inv.items.forEach(it => base += itemAmt(it));
+  const tax = Math.floor(base * 0.1);
+  return { base, tax, total: base + tax };
+}
+let view = 'home', draft = null, editingId = null, detailId = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.style.display = 'none', 2500);
+}
+function blankItem() { return { month: '', day: '', name: '', qty: '', price: '', amount: '' }; }
+function go(v, id) {
+  view = v;
+  if (v === 'edit') {
+    editingId = id || null;
+    draft = id ? JSON.parse(JSON.stringify(db.invoices.find(i => i.id === id))) : {
+      id: null, no: '', clientId: '', issueDate: today(),
+      items: [blankItem()], note: '', status: 'draft'
+    };
+  }
+  if (v === 'detail') detailId = id;
+  render();
+  window.scrollTo(0, 0);
+}
+function render() {
+  document.querySelectorAll('.tab').forEach(b => {
+    const active = b.dataset.nav === (view === 'edit' || view === 'detail' ? 'home' : view);
+    active ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current');
+  });
+  document.getElementById('fab').style.display = view === 'home' ? 'block' : 'none';
+  document.getElementById('app').innerHTML = ({ home: homeView, edit: editView, detail: detailView, clients: clientsView, settings: settingsView })[view]();
+}
+function homeView() {
+  if (!db.invoices.length) return '<h1>請求書</h1><div class="card">まだ請求書がありません。<br>右下の＋から作成してください。</div>';
+  const rows = [...db.invoices].reverse().map(inv => `
+    <div class="list-item" onclick="go('detail','${inv.id}')">
+      <div>
+        <div style="font-weight:600">${esc((db.clients.find(c=>c.id===inv.clientId)||{}).name || '取引先なし')}</div>
+        <div class="muted">${esc(inv.no || '未発行')}　${esc(inv.issueDate)}</div>
+      </div>
+      <div class="num" style="font-weight:700">${yen(calc(inv).total)}</div>
+    </div>`).join('');
+  return `<h1>請求書</h1><div class="card">${rows}</div>`;
+}
+function sheetHTML(inv) {
+  const s = db.settings;
+  const c = calc(inv);
+  const client = db.clients.find(cl => cl.id === inv.clientId) || { name: '' };
+  const items = inv.items.filter(it => it.name || itemAmt(it) || it.month || it.day);
+  const rows = items.map(it => {
+    const hasQP = (+it.qty || 0) && (+it.price || 0);
+    return `<tr>
+      <td class="c">${esc(it.month)}</td><td class="c">${esc(it.day)}</td>
+      <td class="nm">${esc(it.name)}</td>
+      <td class="r">${hasQP ? esc(it.qty) : ''}</td>
+      <td class="r">${hasQP ? num(+it.price) : ''}</td>
+      <td class="r">${itemAmt(it) ? num(itemAmt(it)) : ''}</td></tr>`;
+  });
+  while (rows.length < MIN_ROWS) rows.push('<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+  const addrLine = [s.zip ? '〒' + s.zip : '', s.address].filter(Boolean).join(' ');
+  const bankLines = (s.bank || '').split('\n').filter(l => l.trim());
+  return `
+    <div class="sheet">
+      <div class="ttl-wrap"><span class="ttl">御請求書</span></div>
+      <div class="date">${esc(wareki(inv.issueDate))}</div>
+      <div class="head">
+        <div class="to"><span class="n">${esc(client.name)}　御中</span></div>
+        <div class="from">
+          <div><span class="nm">${esc(s.name)}</span></div>
+          ${s.rep ? `<div class="rep">代表　${esc(s.rep)}</div>` : ''}
+          ${addrLine ? `<div>${esc(addrLine)}</div>` : ''}
+          ${s.tel ? `<div>TEL・FAX　${esc(s.tel)}</div>` : ''}
+        </div>
+      </div>
+      ${s.regno ? `<div class="reg">登録番号　${esc(s.regno)}</div>` : ''}
+      <div class="lead">下記の通り御請求申し上げます</div>
+      <div class="sum"><span>合計金額</span><span class="amt num">${yen(c.total)}</span><span>（税込）</span></div>
+      <table>
+        <colgroup><col style="width:7%"><col style="width:7%"><col style="width:38%"><col style="width:10%"><col style="width:16%"><col style="width:22%"></colgroup>
+        <tr><th>月</th><th>日</th><th>品　　名</th><th>数量</th><th>単価</th><th>金額</th></tr>
+        ${rows.join('')}
+        <tr class="tot first"><td class="lb" colspan="3">小　　計</td><td class="r num" colspan="3">${yen(c.base)}</td></tr>
+        <tr class="tot"><td class="lb" colspan="3">消 費 税</td><td class="r num" colspan="3">${yen(c.tax)}</td></tr>
+        <tr class="tot"><td class="lb" colspan="3">合　　計</td><td class="r num" colspan="3">${yen(c.total)}</td></tr>
+      </table>
+      ${bankLines.length ? `<div class="bank">振込先銀行<br>${bankLines.map((l,i)=>`<div class="b2">${esc(l)}</div>`).join('')}</div>` : ''}
+      ${inv.note ? `<div class="note">${esc(inv.note)}</div>` : ''}
+    </div>`;
+}
+function detailView() {
+  const inv = db.invoices.find(i => i.id === detailId);
+  if (!inv) return homeView();
+  const c = calc(inv);
+  const client = db.clients.find(cl => cl.id === inv.clientId) || { name: '' };
+  return `
+    <div class="card">
+      <div class="muted">${esc(inv.no)}</div>
+      <div style="font-size:18px;font-weight:700">${esc(client.name)} 御中</div>
+      <div style="font-size:28px;font-weight:700" class="num">${yen(c.total)}</div>
+    </div>
+    <button class="btn primary" onclick="window.print()">PDFとして保存 / 印刷</button>
+    <button class="btn" onclick="go('edit','${inv.id}')">編集</button>
+    <button class="btn" onclick="go('home')">一覧に戻る</button>
+    <div class="paper" id="paper">${sheetHTML(inv)}</div>
+    <button class="btn danger" style="margin-top:12px" onclick="delInv('${inv.id}')">この請求書を削除</button>`;
+}
+function delInv(id) {
+  if (!confirm('この請求書を削除しますか？')) return;
+  db.invoices = db.invoices.filter(i => i.id !== id);
+  save(); toast('削除しました'); go('home');
+}
+function editView() {
+  const d = draft;
+  const opts = db.clients.map(c => `<option value="${c.id}" ${c.id===d.clientId?'selected':''}>${esc(c.name)}</option>`).join('');
+  const items = d.items.map((it,i) => `
+    <div class="item-box">
+      <div class="grid2" style="grid-template-columns:1fr 1fr 3fr">
+        <label>月<input class="it-month" type="number" inputmode="numeric" value="${esc(it.month)}"></label>
+        <label>日<input class="it-day" type="number" inputmode="numeric" value="${esc(it.day)}"></label>
+        <label>品名<input class="it-name" value="${esc(it.name)}"></label>
+      </div>
+      <div class="grid3">
+        <label>数量<input class="it-qty" type="number" inputmode="decimal" value="${esc(it.qty)}"></label>
+        <label>単価<input class="it-price" type="number" inputmode="decimal" value="${esc(it.price)}"></label>
+        <label>金額<input class="it-amount" type="number" inputmode="numeric" value="${esc(it.amount)}"></label>
+      </div>
+      <div class="muted" style="margin-top:4px">数量と単価を入れると自動計算。金額だけ入れてもOKです。</div>
+      ${d.items.length > 1 ? `<button class="rm" onclick="rmItem(${i})">この明細を削除</button>` : ''}
+    </div>`).join('');
+  return `
+    <h1>${editingId ? '編集' : '新規請求書'}</h1>
+    <div class="card">
+      <label>取引先<select id="f-client"><option value="">選択してください</option>${opts}</select></label>
+      ${db.clients.length ? '' : '<div class="muted" style="margin-top:6px">先に「取引先」タブで登録してください。</div>'}
+      <label>発行日<input type="date" id="f-date" value="${esc(d.issueDate)}"></label>
+    </div>
+    <div class="card" id="items">${items}</div>
+    <button class="btn" onclick="addItem()">＋ 明細を追加</button>
+    <div class="card">
+      <label>備考（任意）<textarea id="f-note" rows="2">${esc(d.note)}</textarea></label>
+    </div>
+    <button class="btn primary" onclick="saveInv()">保存する</button>
+    <button class="btn" onclick="editingId ? go('detail', editingId) : go('home')">戻る</button>`;
+}
+function addItem() { readForm(); draft.items.push(blankItem()); render(); }
+function rmItem(i) { readForm(); draft.items.splice(i, 1); render(); }
+function readForm() {
+  if (!draft) return;
+  draft.clientId = document.getElementById('f-client').value;
+  draft.issueDate = document.getElementById('f-date').value || today();
+  draft.note = document.getElementById('f-note').value;
+  draft.items = [...document.querySelectorAll('#items > .item-box')].map(el => ({
+    month: el.querySelector('.it-month').value,
+    day: el.querySelector('.it-day').value,
+    name: el.querySelector('.it-name').value,
+    qty: el.querySelector('.it-qty').value,
+    price: el.querySelector('.it-price').value,
+    amount: el.querySelector('.it-amount').value
+  }));
+}
+function saveInv() {
+  readForm();
+  if (!draft.clientId) return toast('取引先を選んでください');
+  if (!draft.items.some(it => it.name.trim() || itemAmt(it))) return toast('明細を入力してください');
+  let id = draft.id;
+  if (!draft.id) {
+    id = draft.id = uid();
+    draft.no = `${db.settings.prefix}-${String(db.settings.seq).padStart(4,'0')}`;
+    db.settings.seq++;
+    db.invoices.push(draft);
+  } else {
+    db.invoices[db.invoices.findIndex(i => i.id === draft.id)] = draft;
+  }
+  save();
+  toast('保存しました');
+  go('detail', id);
+}
+function clientsView() {
+  const rows = db.clients.map(c => `<div class="list-item" style="cursor:default"><span>${esc(c.name)}</span><button class="rm" onclick="delClient('${c.id}')">削除</button></div>`).join('');
+  return `
+    <h1>取引先</h1>
+    <div class="card">
+      <label>会社名 / 氏名<input id="c-name"></label>
+      <button class="btn primary" style="margin-top:12px" onclick="addClient()">登録する</button>
+    </div>
+    <div class="card">${rows || '<div class="muted">まだ登録がありません</div>'}</div>`;
+}
+function addClient() {
+  const name = document.getElementById('c-name').value.trim();
+  if (!name) return toast('名前を入力してください');
+  db.clients.push({ id: uid(), name });
+  save();
+  toast('登録しました');
+  render();
+}
+function delClient(id) {
+  if (db.invoices.some(i => i.clientId === id)) return toast('請求書で使われているため削除できません');
+  if (!confirm('この取引先を削除しますか？')) return;
+  db.clients = db.clients.filter(c => c.id !== id);
+  save(); render();
+}
+function settingsView() {
+  const s = db.settings;
+  return `
+    <h1>設定</h1>
+    <div class="card">
+      <label>屋号・会社名<input id="s-name" value="${esc(s.name)}"></label>
+      <label>代表者名<input id="s-rep" value="${esc(s.rep)}"></label>
+      <label>郵便番号（例 350-0209）<input id="s-zip" value="${esc(s.zip)}"></label>
+      <label>住所<input id="s-address" value="${esc(s.address)}"></label>
+      <label>TEL・FAX<input id="s-tel" value="${esc(s.tel)}"></label>
+      <label>登録番号（インボイス、例 T1234567890123）<input id="s-regno" value="${esc(s.regno)}"></label>
+      <label>振込先（1行目 銀行・支店・口座、2行目 名義）<textarea id="s-bank" rows="3">${esc(s.bank)}</textarea></label>
+      <button class="btn primary" style="margin-top:12px" onclick="saveSettings()">保存する</button>
+    </div>
+    <div class="card">
+      <div class="muted">データはこの端末のブラウザに保存されます。</div>
+      <button class="btn" style="margin-top:8px" onclick="backup()">バックアップをコピー</button>
+    </div>`;
+}
+function saveSettings() {
+  const g = id => document.getElementById(id).value.trim();
+  Object.assign(db.settings, { name: g('s-name'), rep: g('s-rep'), zip: g('s-zip'), address: g('s-address'), tel: g('s-tel'), regno: g('s-regno'), bank: document.getElementById('s-bank').value.trim() });
+  save();
+  toast('保存しました');
+}
+async function backup() {
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(db));
+    toast('コピーしました');
+  } catch {
+    toast('コピーできませんでした');
+  }
+}
+render();
+</script>
+</body>
+</html>
